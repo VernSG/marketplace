@@ -1,0 +1,122 @@
+// --- PENGGUNA & TOKO ---
+
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  password varchar
+  phone varchar
+  // Update: Menambahkan role seller agar eksplisit
+  role enum_role [note: "buyer, seller, admin"] 
+  avatar_url varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table shops {
+  id int [pk, increment]
+  user_id int [ref: - users.id] // One User has One Shop
+  name varchar
+  slug varchar [unique] 
+  description text
+  address text
+  // Info Rekening Penjual (Direct Transfer)
+  bank_name varchar 
+  bank_account_number varchar
+  bank_account_holder varchar
+  // Update: Status aktif untuk fitur Banned/Suspend oleh Admin
+  is_active boolean [default: true] 
+  rating decimal(3,2) [default: 0]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// --- PRODUK ---
+
+Table categories {
+  id int [pk, increment]
+  name varchar
+  slug varchar
+}
+
+Table products {
+  id int [pk, increment]
+  shop_id int [ref: > shops.id] 
+  category_id int [ref: > categories.id]
+  name varchar
+  slug varchar
+  description text
+  price decimal(10,2)
+  stock int
+  image_url varchar
+  // Update: Agar penjual bisa menyembunyikan produk tanpa menghapus
+  is_active boolean [default: true] 
+  created_at timestamp
+  updated_at timestamp
+}
+
+// --- TRANSAKSI ---
+
+Table orders {
+  id int [pk, increment]
+  // Format Invoice: INV/20251230/USER/001
+  invoice_number varchar [unique] 
+  user_id int [ref: > users.id] 
+  shop_id int [ref: > shops.id] 
+  
+  // Informasi Pengiriman
+  shipping_address text
+  shipping_courier varchar 
+  shipping_cost decimal(10,2) [default: 0]
+  
+  // Informasi Pembayaran
+  total_amount decimal(10,2) 
+  payment_method varchar [default: "bank_transfer"]
+  payment_proof varchar [note: "URL bukti transfer"]
+  
+  // Update: Kolom untuk payment gateway masa depan
+  
+  status enum_order_status [default: "pending"]
+  
+  // Update: Alasan pembatalan jika status cancelled
+  cancellation_note text 
+  
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table order_items {
+  id int [pk, increment]
+  order_id int [ref: > orders.id]
+  product_id int [ref: > products.id]
+  quantity int
+  // Penting: Harga saat transaksi terjadi
+  price_at_purchase decimal(10,2) 
+  note text [note: "Catatan: Warna merah, Ukuran L"]
+}
+
+// --- KERANJANG ---
+Table cart_items {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  product_id int [ref: > products.id]
+  quantity int
+  created_at timestamp
+}
+
+// --- ENUMS ---
+
+Enum enum_role {
+  buyer
+  seller
+  admin
+}
+
+Enum enum_order_status {
+  pending // Menunggu bayar
+  waiting_verification // Menunggu konfirmasi penjual
+  processed // Sedang dikemas
+  shipped // Sedang dikirim
+  completed // Selesai
+  cancelled // Dibatalkan
+}
